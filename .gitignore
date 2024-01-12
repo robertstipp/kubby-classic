@@ -1,1 +1,4 @@
 /node_modules
+/edwins.yaml
+/kubeconfig.yaml
+/localkubeconfig.yaml
