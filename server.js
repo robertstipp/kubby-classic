@@ -616,9 +616,9 @@ server.listen(PORT, () => {
   console.log(`Server listening ${PORT}`);
 });
 
-async function run() {
-  //   console.log("running...");
-  const OBJECT = await getClusterInfo();
-  console.log(OBJECT);
-}
-run();
+// async function run() {
+//   //   console.log("running...");
+//   const OBJECT = await getClusterInfo();
+//   console.log(OBJECT);
+// }
+// run();
