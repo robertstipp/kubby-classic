@@ -109,11 +109,13 @@ const getPodStats = async () => {
 };
 
 const getClusterInfo = async () => {
-  const namespacesResponse = await k8sApi.listNamespace();
-  // const { items: namespaces } = namespacesResponse.body;
-  // namespaces.forEach((namespace) => {
-  //     // console.log(namespace)
-  // });
+
+    const servicesResponse = await k8sApi.listServiceForAllNamespaces();
+    servicesResponse.body.items.forEach((service) => {
+        console.log(service.metadata.name);
+        console.log(service.metadata.namespace);
+        findPodsForService(service.metadata.name, service.metadata.namespace)
+    });
 
   const result = await k8sApi.listPodForAllNamespaces();
   const { items } = result.body;
@@ -417,11 +419,33 @@ const getContainerLog = async (podName, nameSpace, containerName) => {
       nameSpace,
       containerName
     );
-    console.log(response.body);
+    // console.log(response.body);
   } catch (error) {
     console.log(error);
   }
 };
+
+async function findPodsForService(serviceName, namespace) {
+    try {
+        // Fetch the service to get its selector
+        const { body: service } = await k8sApi.readNamespacedService(serviceName, namespace);
+        const selector = service.spec.selector;
+
+        // Convert selector object into a selector string
+        const labelSelector = Object.entries(selector).map(([key, value]) => `${key}=${value}`).join(',');
+
+        // Use the selector to find pods
+        const { body: { items: pods } } = await k8sApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector);
+
+        // Mapping of service to its pods
+        console.log(`Service ${serviceName} in ${namespace} namespace has the following pods:`);
+        pods.forEach(pod => {
+            console.log(`- ${pod.metadata.name}`);
+        });
+    } catch (error) {
+        console.error('Error fetching service or pods:', error);
+    }
+}
 
 app.get("/", (req, res) => {
   res.send("KUBBY --- A faros backend");
@@ -536,6 +560,6 @@ server.listen(PORT, () => {
 async function run() {
   console.log("running...");
   const OBJECT = await getClusterInfo();
-  console.log("I am the OBJECT", OBJECT);
+console.log(OBJECT)
 }
 run();
