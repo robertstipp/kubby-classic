@@ -109,13 +109,17 @@ const getPodStats = async () => {
 };
 
 const getClusterInfo = async () => {
+  const servicesResponse = await k8sApi.listServiceForAllNamespaces();
+  const serviceToPodsMapping = {};
 
-    const servicesResponse = await k8sApi.listServiceForAllNamespaces();
-    servicesResponse.body.items.forEach((service) => {
-        console.log(service.metadata.name);
-        console.log(service.metadata.namespace);
-        findPodsForService(service.metadata.name, service.metadata.namespace)
+  const promises = servicesResponse.body.items.map((service) => {
+    return getServicePodsMapping(
+      service.metadata.name,
+      service.metadata.namespace
+    ).then((pods) => {
+      serviceToPodsMapping[service.metadata.name] = pods;
     });
+  });
 
   const result = await k8sApi.listPodForAllNamespaces();
   const { items } = result.body;
@@ -152,7 +156,23 @@ const getClusterInfo = async () => {
     nodes[nodeIndex].pods.push(podObj);
   }
 
-  return { nodes, namespaces };
+  await Promise.all(promises)
+    .catch((error) => {
+      console.error("Error fetching service to pods mapping:", error);
+        });
+    // (async function fetchData() {
+    //     try {
+    //       await Promise.all(promises);
+    //       // Now all async operations are complete, and we can safely return the fully populated object.
+    //         // return { nodes, namespaces, serviceToPodsMapping };
+    //         console.log(serviceToPodsMapping)
+    //     } catch (error) {
+    //       console.error("Error fetching service to pods mapping:", error);
+    //       // Handle error appropriately. Maybe return null or throw an error.
+    //     }
+    //   })()
+
+  return { nodes, namespaces, serviceToPodsMapping };
 };
 
 const getNodeResources = async () => {
@@ -425,26 +445,65 @@ const getContainerLog = async (podName, nameSpace, containerName) => {
   }
 };
 
-async function findPodsForService(serviceName, namespace) {
-    try {
-        // Fetch the service to get its selector
-        const { body: service } = await k8sApi.readNamespacedService(serviceName, namespace);
-        const selector = service.spec.selector;
+// async function findPodsForService(serviceName, namespace) {
+//     console.log(`Service ${serviceName} in ${namespace} namespace:`)
+//     try {
+//         // Fetch the service to get its selector
+//         const { body: service } = await k8sApi.readNamespacedService(serviceName, namespace);
+//         const selector = service.spec.selector;
 
-        // Convert selector object into a selector string
-        const labelSelector = Object.entries(selector).map(([key, value]) => `${key}=${value}`).join(',');
+//         // Convert selector object into a selector string
+//         const labelSelector = Object.entries(selector).map(([key, value]) => `${key}=${value}`).join(',');
 
-        // Use the selector to find pods
-        const { body: { items: pods } } = await k8sApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector);
+//         // Use the selector to find pods
+//         const { body: { items: pods } } = await k8sApi.listNamespacedPod(namespace, undefined, undefined, undefined, undefined, labelSelector);
 
-        // Mapping of service to its pods
-        console.log(`Service ${serviceName} in ${namespace} namespace has the following pods:`);
-        pods.forEach(pod => {
-            console.log(`- ${pod.metadata.name}`);
-        });
-    } catch (error) {
-        console.error('Error fetching service or pods:', error);
+//         // Mapping of service to its pods
+//         // console.log(`Service ${serviceName} in ${namespace} namespace has the following pods:`);
+//         pods.forEach(pod => {
+
+//             console.log(`- ${pod.metadata.name}`);
+//         });
+//     } catch (error) {
+//         console.error('Error fetching service or pods:', error);
+//     }
+// }
+
+async function getServicePodsMapping(serviceName, namespace) {
+  try {
+    // Fetch the service to get its selector
+    const { body: service } = await k8sApi.readNamespacedService(
+      serviceName,
+      namespace
+    );
+    const selector = service.spec.selector;
+
+    // Convert selector object into a selector string
+    if (!selector) {
+      return {};
     }
+      
+    const labelSelector = Object.entries(selector)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(",");
+
+    // Use the selector to find pods
+    const {
+      body: { items: pods },
+    } = await k8sApi.listNamespacedPod(
+      namespace,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      labelSelector
+    );
+
+    return pods.map((pod) => pod.metadata.name);
+  } catch (error) {
+    console.error("Error fetching service or pods:", error);
+    return {};
+  }
 }
 
 app.get("/", (req, res) => {
@@ -525,13 +584,13 @@ function startWatching() {
       {},
       (type, apiObj, watchObj) => {
         if (type === "ADDED") {
-          console.log("New Pod Added:", apiObj.metadata.name);
+          //   console.log("New Pod Added:", apiObj.metadata.name);
           io.emit("podAdded", apiObj);
         } else if (type === "MODIFIED") {
-          console.log("Pod Modified:", apiObj.metadata.name);
+          //   console.log("Pod Modified:", apiObj.metadata.name);
           io.emit("podModified", apiObj);
         } else if (type === "DELETED") {
-          console.log("Pod Deleted:", apiObj.metadata.name);
+          //   console.log("Pod Deleted:", apiObj.metadata.name);
           io.emit("podDeleted", apiObj);
         }
       },
@@ -558,8 +617,8 @@ server.listen(PORT, () => {
 });
 
 async function run() {
-  console.log("running...");
+  //   console.log("running...");
   const OBJECT = await getClusterInfo();
-console.log(OBJECT)
+  console.log(OBJECT);
 }
 run();
