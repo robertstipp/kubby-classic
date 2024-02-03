@@ -109,24 +109,22 @@ const getPodStats = async () => {
 };
 
 const getClusterInfo = async () => {
-    const namespacesResponse = await k8sApi.listNamespace();
-    // const { items: namespaces } = namespacesResponse.body;
-    // namespaces.forEach((namespace) => {
-    //     // console.log(namespace)
-    // });
-
+  const namespacesResponse = await k8sApi.listNamespace();
+  // const { items: namespaces } = namespacesResponse.body;
+  // namespaces.forEach((namespace) => {
+  //     // console.log(namespace)
+  // });
 
   const result = await k8sApi.listPodForAllNamespaces();
   const { items } = result.body;
-    const nodes = [];
-    const namespaces = {};
-    for (const pod of items) {
-
-        if (namespaces[pod.metadata.namespace] === undefined) {
-            namespaces[pod.metadata.namespace] = [pod.metadata.name];
-        } else {
-            namespaces[pod.metadata.namespace].push(pod.metadata.name);
-        }
+  const nodes = [];
+  const namespaces = {};
+  for (const pod of items) {
+    if (namespaces[pod.metadata.namespace] === undefined) {
+      namespaces[pod.metadata.namespace] = [pod.metadata.name];
+    } else {
+      namespaces[pod.metadata.namespace].push(pod.metadata.name);
+    }
 
     const { nodeName } = pod.spec;
     let nodeIndex = nodes.findIndex((el) => el.nodeName === nodeName);
@@ -136,6 +134,7 @@ const getClusterInfo = async () => {
     nodeIndex = nodeIndex === -1 ? nodes.length - 1 : nodeIndex;
     const { name: podName } = pod.metadata;
     const podObj = {
+      namespace: pod.metadata.namespace,
       name: podName,
       containers: [],
     };
@@ -149,7 +148,7 @@ const getClusterInfo = async () => {
     }
 
     nodes[nodeIndex].pods.push(podObj);
-    }
+  }
 
   return { nodes, namespaces };
 };
@@ -248,7 +247,6 @@ const getPodResources = async () => {
 };
 
 const getClusterMetrics = async () => {
-
   const result = await k8sApi.listPodForAllNamespaces();
   const podMap = {};
   const nodeMap = {};
@@ -307,11 +305,11 @@ const getClusterMetrics = async () => {
     const nodeObj = { name: key, ...nodeMap[key] };
     clusterUsage.push(nodeObj);
   }
-    return clusterUsage;
+  return clusterUsage;
 };
 
 const getFlatClusterMetrics = async () => {
-    const result = await k8sApi.listPodForAllNamespaces();
+  const result = await k8sApi.listPodForAllNamespaces();
   const podMap = {};
   const nodeMap = {};
 
@@ -523,7 +521,8 @@ function startWatching() {
       console.log("Watching for changes in namespace:", namespace);
     })
     .catch((err) => {
-      console.error("Error starting the watch:", err); ub-=gt
+      console.error("Error starting the watch:", err);
+      ub -= gt;
       setTimeout(startWatching, 5000);
     });
 }
@@ -535,8 +534,8 @@ server.listen(PORT, () => {
 });
 
 async function run() {
-    console.log("running...")
-    const OBJECT = await getClusterInfo(); 
-    console.log('I am the OBJECT', OBJECT);
+  console.log("running...");
+  const OBJECT = await getClusterInfo();
+  console.log("I am the OBJECT", OBJECT);
 }
-run()
+run();
