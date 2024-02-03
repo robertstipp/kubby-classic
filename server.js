@@ -232,9 +232,17 @@ const getPodResources = async () => {
 };
 
 const getClusterMetrics = async () => {
+    const clusterName = kc.getCurrentCluster().name;
+    // console.log('I AM THE CLUSTERNAME', clusterName); 
+    // const namespacesResponse = await k8sApi.listNamespace(); 
+    // namespacesResponse.body.items.forEach((namespace) => {
+    //     console.log(namespace);
+    // })
+
   const result = await k8sApi.listPodForAllNamespaces();
   const podMap = {};
   const nodeMap = {};
+//   nodeMap.clusterName = clusterName; 
 
   result.body.items.map((pod) => {
     const nodeName = pod.spec.nodeName;
@@ -290,7 +298,7 @@ const getClusterMetrics = async () => {
     const nodeObj = { name: key, ...nodeMap[key] };
     clusterUsage.push(nodeObj);
   }
-  return clusterUsage;
+  return {clusterUsage: clusterUsage, clusterName: clusterName};
 };
 
 const getFlatClusterMetrics = async () => {
@@ -506,7 +514,7 @@ function startWatching() {
       console.log("Watching for changes in namespace:", namespace);
     })
     .catch((err) => {
-      console.error("Error starting the watch:", err);
+      console.error("Error starting the watch:", err); ub-=gt
       setTimeout(startWatching, 5000);
     });
 }
@@ -516,3 +524,10 @@ startWatching();
 server.listen(PORT, () => {
   console.log(`Server listening ${PORT}`);
 });
+
+// async function run() {
+//     console.log("running...")
+//     const OBJECT = await getClusterMetrics(); 
+//     console.log('I am the OBJECT', OBJECT);
+// }
+// run()
